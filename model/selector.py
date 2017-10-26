@@ -1,7 +1,9 @@
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
-import torch.functional as F
+import numpy as np
+
+np.choose()
 
 IN_DIM = 2048
 BATCH_SIZE = 32
@@ -39,6 +41,7 @@ class Selector(nn.Module):
         x = self.linear3(x)
 
         y = nn.Softmax()(x)
+
 
         # output = output.view(-1, 4 * DIM, 4, 4)
         # # print output.size()
