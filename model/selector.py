@@ -3,7 +3,7 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.functional as F
 
-IN_DIM = 1024
+IN_DIM = 2048
 BATCH_SIZE = 32
 
 
@@ -18,11 +18,11 @@ class Selector(nn.Module):
         self.bn1 = nn.BatchNorm1d(4 * IN_DIM)
         self.relu1 = nn.ReLU(inplace=True)
 
-        self.linear2 = nn.Linear(4 * IN_DIM, 8 * IN_DIM)
-        self.bn2 = nn.BatchNorm1d(8 * IN_DIM)
+        self.linear2 = nn.Linear(4 * IN_DIM, IN_DIM)
+        self.bn2 = nn.BatchNorm1d(IN_DIM)
         self.relu2 = nn.ReLU(inplace=True)
 
-        self.linear3 = nn.Linear(8 * IN_DIM, BATCH_SIZE)
+        self.linear3 = nn.Linear(IN_DIM, BATCH_SIZE)
 
     def forward(self, input):
         x = self.linear0(input)
@@ -57,8 +57,6 @@ class Selector(nn.Module):
 
 if __name__ == '__main__':
     s = Selector()
-    input_ = torch.autograd.Variable(torch.Tensor(BATCH_SIZE, 1024))
+    input_ = torch.autograd.Variable(torch.Tensor(BATCH_SIZE, 2048))
     o1, o2 = s(input_)
-    nn.Parameter
-    nn.Conv2d
     print()
