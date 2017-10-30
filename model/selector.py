@@ -32,13 +32,17 @@ class Selector(nn.Module):
         self.linear3 = nn.Linear(IN_DIM, 1)
 
     def forward(self, anchor, candi, n_sample):
-        anchor = self.linear_anchor(anchor)
-        anchor = self.relu_anchor(anchor)
+        # Duplicate anchor
+        batch_size = candi.size()[0]
 
-        candi = self.linear0(candi)
-        candi = self.relu0(candi)
+        x_anchor = self.linear_anchor(anchor)
+        x_anchor = self.relu_anchor(x_anchor)
+        x_anchor = x_anchor.expand(batch_size, 1)
 
-        x = torch.cat([anchor, candi])
+        x_candi = self.linear0(candi)
+        x_candi = self.relu0(x_candi)
+
+        x = torch.cat([x_anchor, x_candi], dim=1)
 
         x = self.linear1(x)
         x = self.bn1(x)
@@ -71,7 +75,7 @@ class Selector(nn.Module):
 
     def __sample(self, data, prob, n_sample):
         indexes = torch.multinomial(prob, n_sample)
-        res = data[indexes, :, :, :]
+        res = torch.index_select(data, 0, indexes)
         return res
 
 

@@ -12,14 +12,17 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
 
-        self.linear0 = nn.Linear(IN_DIM, 2 * IN_DIM)
-        self.relu0 = nn.ReLU(True)
+        self.linear_candi = nn.Linear(IN_DIM, 2 * IN_DIM)
+        self.relu_candi = nn.ReLU(True)
 
-        self.linear1 = nn.Linear(4 * IN_DIM, 1 * IN_DIM)
-        self.bn1 = nn.BatchNorm1d(1 * IN_DIM)
+        self.linear_anchor = nn.Linear(IN_DIM, 2 * IN_DIM)
+        self.relu_anchor = nn.ReLU(True)
+
+        self.linear1 = nn.Linear(4 * IN_DIM, 2 * IN_DIM)
+        self.bn1 = nn.BatchNorm1d(2 * IN_DIM)
         self.relu1 = nn.ReLU(inplace=True)
 
-        self.linear1 = nn.Linear(1 * IN_DIM, 4 * IN_DIM)
+        self.linear1 = nn.Linear(2 * IN_DIM, 4 * IN_DIM)
         self.bn1 = nn.BatchNorm1d(4 * IN_DIM)
         self.relu1 = nn.ReLU(inplace=True)
 
@@ -29,9 +32,17 @@ class Discriminator(nn.Module):
 
         self.linear3 = nn.Linear(IN_DIM, 1)
 
-    def forward(self, candi, n_sample):
-        x = self.linear0(candi)
-        x = self.relu0(x)
+    def forward(self, anchor, candi):
+        batch_size = candi.size()[0]
+
+        x_anchor = self.linear_anchor(anchor)
+        x_anchor = self.relu_anchor(x_anchor)
+        x_anchor = x_anchor.expand(batch_size, 1)
+
+        x_candi = self.linear_candi(candi)
+        x_candi = self.relu_candi(x_candi)
+
+        x = torch.cat([x_anchor, x_candi], 1)
 
         x = self.linear1(x)
         x = self.bn1(x)
@@ -41,7 +52,9 @@ class Discriminator(nn.Module):
         x = self.bn2(x)
         x = self.relu2(x)
 
-        score = self.linear3(x)
+        x = self.linear3(x)
+
+        score = torch.tanh(x) / 2 + .5
 
         # output = output.view(-1, 4 * DIM, 4, 4)
         # # print output.size()
