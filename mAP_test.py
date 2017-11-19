@@ -27,6 +27,11 @@ adv-fc-0
 adv-fc (pretrained on fc no eval, train with eval)
         eval    no eval
 0-90    40.28   45.65
+=================================================
+trp-fc
+699     38
+adv-0
+1-81    23.26
 """
 
 import torch
@@ -52,24 +57,34 @@ def cos_similarity(q, d):
 
 def AP(q_id, doc_id_list, doc_score_tensor):
     sorted_score, sorted_index = torch.sort(doc_score_tensor, dim=0, descending=True)
-    if sorted_score.is_cuda:
-        sorted_score = sorted_score.cpu()
-    sorted_score = sorted_score.numpy()
 
-    [length, ] = sorted_score.shape
-    hit_cnt = 0
-    total_hit = doc_id_list.count(q_id)
-    img_index = 0
-    point = []
-    for i in range(length):
-        img_index += 1
-        if q_id == doc_id_list[sorted_index[i]]:
-            hit_cnt += 1
-            point.append(hit_cnt / img_index)
-            if hit_cnt >= total_hit:
-                break
+    eql = np.array([q_id] * len(doc_id_list)) == np.array(doc_id_list)
+    eql = np.array(eql).astype(np.float32)
+    eql_tensor = torch.FloatTensor(eql).cuda()
+    ranked_eql_tensor = torch.gather(eql_tensor, 0, sorted_index)
 
-    AP = np.sum(np.array(point)) / total_hit
+    numerator = torch.cumsum(ranked_eql_tensor, 0)
+    denominator = torch.cumsum(torch.ones(ranked_eql_tensor.size()).cuda(), 0)
+    AP = torch.sum(numerator / denominator * ranked_eql_tensor) / torch.sum(ranked_eql_tensor)
+
+    # if sorted_score.is_cuda:
+    #     sorted_score = sorted_score.cpu()
+    # sorted_score = sorted_score.numpy()
+    #
+    # [length, ] = sorted_score.shape
+    # hit_cnt = 0
+    # total_hit = doc_id_list.count(q_id)
+    # img_index = 0
+    # point = []
+    # for i in range(length):
+    #     img_index += 1
+    #     if q_id == doc_id_list[sorted_index[i]]:
+    #         hit_cnt += 1
+    #         point.append(hit_cnt / img_index)
+    #         if hit_cnt >= total_hit:
+    #             break
+    #
+    # AP = np.sum(np.array(point)) / total_hit
     return AP
 
 
@@ -77,22 +92,21 @@ def mAP(dis: Discriminator, dataset_fea: DatasetFeatureHHH, batch_size):
     AP_list = []
 
     for idx in range(dataset_fea.get_per_cnt()):
-        [q_id, _] = dataset_fea.select(idx)  # anchor person
+        [q_id, q_fea] = dataset_fea.select(idx)  # anchor person
         doc_id_list = []
         doc_score_tensor = torch.FloatTensor().cuda()
         # test all persons
         dl = DataLoader(dataset_fea, batch_size, shuffle=True)
         for doc_ids, doc in dl:
             # query
-            [_, q_fea] = dataset_fea.select(idx)  # anchor person
             query = torch.unsqueeze(q_fea, 0)
             query = Variable(query.cuda(), volatile=True)
             # doc
             doc = Variable(doc.cuda(), volatile=True)
-            # # metric learning similarity
-            # doc_scores = dis(query, doc)
+            # metric learning similarity
+            doc_scores = dis(query, doc)
             # cosine similarity
-            doc_scores = cos_similarity(query, doc)
+            # doc_scores = cos_similarity(query, doc)
 
             doc_scores = doc_scores.data
             doc_id_list.extend(doc_ids)
@@ -149,9 +163,9 @@ if __name__ == '__main__':
     # trp
     # dis_model_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/triplet-gv2/save-dis-4000"
     # trp-fc
-    # dis_model_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/triplet-gv2/fc-only/epoch-5000-margin/save-dis-1000"
-    # adv
-    dis_model_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/adv-res_11-15/from-0/save-sel_4-52"
+    # dis_model_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/trp-fc/save-dis-699"
+    # adv-0
+    dis_model_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/adv-0/save-sel_1-81"
 
     # build graph
     feature_extractor = Inceptionv2()

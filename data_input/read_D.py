@@ -128,7 +128,7 @@ def get_gallery(dataset: Dataset):
 
 
 class Dataset_triple(Dataset):
-    def __init__(self, batch_size: int, data_dir=mars_train_root, transform_=None):
+    def __init__(self, batch_size: int, data_dir=mars_train_root, transform_=default_transform):
         self.batch_size = batch_size
         self.data_dir = data_dir
         self.data = list(get_person_table(data_dir).table.items())
@@ -175,7 +175,7 @@ class DatasetMini(Dataset):
             res.extend(idAndImgPath)
         self.idAndImgPathList = res
 
-    def __init__(self, personTable: PersonTable, imgRoot, transforms_):
+    def __init__(self, personTable: PersonTable, imgRoot, transforms_=default_transform):
         self.imgRoot = imgRoot
         self.person_table = personTable
         self.idAndImgPathList = None
@@ -255,13 +255,4 @@ class DataProvider:
 
 
 if __name__ == '__main__':
-    person_list = get_person_table(mars_train_root)
-    ds = DatasetMini(person_list, 50,
-                     mars_train_root,
-                     transforms_=transforms.Compose(
-                         [transforms.Scale([224, 224]),
-                          transforms.ToTensor(),
-                          transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                               std=[0.229, 0.224, 0.225])]))
-    res = ds[12]
     print()

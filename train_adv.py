@@ -13,20 +13,20 @@ import os
 import time
 import torch.nn as nn
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 time.sleep(1.5)
 
 # config
 batch_size = 128
-epoch_total = 10
+epoch_total = 20
 n_gen = 1
 n_dis = 5
 is_cuda = True
 display_step = 10
 save_step = 10
 net_pretrain = True
-save_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/adv-res_11-15/from-0/"
-log_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/adv-res_11-15/from-0/"
+save_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/adv-0/"
+log_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/adv-0/"
 
 # build graph
 if net_pretrain:
@@ -39,12 +39,12 @@ if net_pretrain:
     feature_extractor.load_state_dict(fea_ext_dict)
 
     dis = Discriminator()
-    dis.load_state_dict(
-        torch.load("/home/nhli/PycharmProj/ReIDGAN_/workdir/adv-res_11-15/from-0/save-dis_0-99"))
+    # dis.load_state_dict(
+    #     torch.load("/home/nhli/PycharmProj/ReIDGAN_/workdir/adv-res_11-15/from-0/save-dis_0-99"))
 
     selector = Selector()
-    selector.load_state_dict(
-        torch.load("/home/nhli/PycharmProj/ReIDGAN_/workdir/adv-res_11-15/from-0/save-sel_0-99"))
+    # selector.load_state_dict(
+    #     torch.load("/home/nhli/PycharmProj/ReIDGAN_/workdir/adv-res_11-15/from-0/save-sel_0-99"))
 else:
     feature_extractor = Inceptionv2
     dis = Discriminator()

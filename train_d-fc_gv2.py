@@ -15,15 +15,14 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 time.sleep(1.5)
 # config
 batch_size = 32
-epoch_total = 3000
-n_dis = 1
+epoch_total = 4000
 is_cuda = True
 save_step = 100
 display_step = 10
 gv2_model_path = "/home/nhli/PycharmProj/ReIDGAN_/params/record-step-12685-model.pkl"
-# dis_model_path = None
-dis_model_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/triplet-gv2/fc-only/eval/epoch-1000/save-dis-1000"
-save_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/triplet-gv2/fc-only/eval/"
+dis_model_path = None
+# dis_model_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/triplet-gv2/fc-only/eval/epoch-1000/save-dis-1000"
+save_path = "/home/nhli/PycharmProj/ReIDGAN_/workdir/trp-fc"
 log_path = None
 
 # build graph
@@ -125,9 +124,7 @@ while data_iter.epoch <= epoch_total:
     if (global_step % display_step) == 0:
         display(global_step, data_iter.epoch, loss, score_real_logit, score_wrong_logit)
 
-    if data_iter.epoch % save_step == 0:
-        if data_iter.epoch == 0:
-            continue
+    if (data_iter.epoch + 1) % save_step == 0:
         if os.path.isfile(os.path.join(save_path, 'save-dis-%d' % data_iter.epoch)):
             continue
         # torch.save(feature_extractor.state_dict(), os.path.join(save_path, 'save-fea-%d' % data_iter.epoch))
