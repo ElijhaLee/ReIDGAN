@@ -4,7 +4,7 @@ from torch.nn.parameter import Parameter
 import math
 from torchvision.models.resnet import Bottleneck
 
-pretrained_path = '/home/elijha/Documents/PycharmProjects/ReIDGAN/params/resnet50-19c8e357.pth'
+pretrained_path = "/home/nhli/PycharmProj/ReIDGAN_/params/resnet50-19c8e357.pth"
 
 
 class ResNet(nn.Module):
