@@ -1,82 +1,81 @@
-import torch
-import torch.autograd as autograd
 import torch.nn as nn
-import numpy as np
+import torch
+from torch.autograd.variable import Variable
+from torch.optim.adam import Adam
+import torch.nn.functional as F
+from data_input.read_D import DatasetMini
+from torch.utils.data import DataLoader
 
-IN_DIM = 2048
+IN_DIM = 1024
 BATCH_SIZE = 32
+
+
+def sample(feature, distribution, n_sample):
+    indexes = torch.multinomial(distribution, n_sample, replacement=True).detach()
+    selected_fea = torch.index_select(feature, 0, indexes)
+    selected_prob = torch.index_select(distribution, 0, indexes)
+    return selected_fea.detach(), selected_prob  # prob needs bp, so do not detach
+
+
+def random_select(feature, n_sample, is_cuda):
+    weight = torch.ones(feature.size()[0])
+    idx = torch.multinomial(weight, n_sample, replacement=True)
+    if is_cuda:
+        idx = idx.cuda()
+    return torch.index_select(feature, 0, idx)
 
 
 class Selector(nn.Module):
     def __init__(self):
         super(Selector, self).__init__()
 
-        self.linear_anchor = nn.Linear(IN_DIM, 2 * IN_DIM)
-        self.relu_anchor = nn.ReLU(True)
+        # net
+        self.linear_candi = nn.Linear(IN_DIM, IN_DIM // 2)
+        self.relu_candi = nn.LeakyReLU(inplace=True)
 
-        self.linear0 = nn.Linear(IN_DIM, 2 * IN_DIM)
-        self.relu0 = nn.ReLU(True)
+        self.linear_anchor = nn.Linear(IN_DIM, IN_DIM // 2)
+        self.relu_anchor = nn.LeakyReLU(inplace=True)
 
-        self.linear1 = nn.Linear(4 * IN_DIM, 1 * IN_DIM)
-        self.bn1 = nn.BatchNorm1d(1 * IN_DIM)
-        self.relu1 = nn.ReLU(inplace=True)
+        self.linear1 = nn.Linear(IN_DIM, IN_DIM // 2)
+        self.relu1 = nn.LeakyReLU(inplace=True)
 
-        self.linear1 = nn.Linear(1 * IN_DIM, 4 * IN_DIM)
-        self.bn1 = nn.BatchNorm1d(4 * IN_DIM)
-        self.relu1 = nn.ReLU(inplace=True)
+        self.linear2 = nn.Linear(IN_DIM // 2, 1)
+        self.act_fn = nn.Tanh()
 
-        self.linear2 = nn.Linear(4 * IN_DIM, 1 * IN_DIM)
-        self.bn2 = nn.BatchNorm1d(IN_DIM)
-        self.relu2 = nn.ReLU(inplace=True)
+        # opt
+        self.opt = Adam(self.parameters(), lr=1e-4)
 
-        self.linear3 = nn.Linear(IN_DIM, 1)
+    def forward(self, fea_q, fea_d):
+        bs_anchor = fea_q.size()[0]
+        bs_candi = fea_d.size()[0]
+        assert bs_anchor == bs_candi or bs_anchor == 1
 
-    def forward(self, anchor, candi, n_sample):
-        # Duplicate anchor
-        batch_size = candi.size()[0]
-
-        x_anchor = self.linear_anchor(anchor)
+        x_anchor = self.linear_anchor(fea_q)
         x_anchor = self.relu_anchor(x_anchor)
-        x_anchor = x_anchor.expand(batch_size, 1)
+        x_anchor = x_anchor.expand(bs_candi, x_anchor.size()[1])
 
-        x_candi = self.linear0(candi)
-        x_candi = self.relu0(x_candi)
+        x_candi = self.linear_candi(fea_d)
+        x_candi = self.relu_candi(x_candi)
 
-        x = torch.cat([x_anchor, x_candi], dim=1)
+        x = torch.cat([x_anchor, x_candi], 1)
 
         x = self.linear1(x)
-        x = self.bn1(x)
         x = self.relu1(x)
 
         x = self.linear2(x)
-        x = self.bn2(x)
-        x = self.relu2(x)
 
-        score = self.linear3(x)
+        logit = x.view(-1)
 
-        score = score.view(1, -1)
+        return logit
 
-        prob = nn.Softmax()(score)
-        sample = self.__sample(candi, prob, n_sample)
+    def bp(self, fake_logit: Variable, prob):
+        bs = fake_logit.size()[0]
+        self.opt.zero_grad()
+        reward = torch.tanh(fake_logit.detach())
+        # loss = -(torch.mean(torch.log(prob) * reward)).backward()
+        torch.log(prob).backward(-reward / bs)
 
-        # output = output.view(-1, 4 * DIM, 4, 4)
-        # # print output.size()
-        # output = self.block1(output)
-        # # print output.size()
-        # output = output[:, :, :7, :7]
-        # # print output.size()
-        # output = self.block2(output)
-        # # print output.size()
-        # output = self.deconv_out(output)
-        # output = self.sigmoid(output)
-        # # print output.size()
-        # return output.view(-1, OUTPUT_DIM)
-        return score, prob, sample
-
-    def __sample(self, data, prob, n_sample):
-        indexes = torch.multinomial(prob, n_sample)
-        res = torch.index_select(data, 0, indexes)
-        return res
+        self.opt.step()
 
 
 if __name__ == '__main__':
